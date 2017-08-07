@@ -1,6 +1,8 @@
 # AckAck
 AckAck is a python script that automatically generates a plist based on the licenses in your Carthage or CocoaPods folder. When you use the plists in your app, the licenses will show up in the Settings app.
 
+![Settings example](http://i.imgur.com/V4JfPlC.png)
+
 ## Installation
 
 Simply download the [ackack.py script](https://raw.githubusercontent.com/Building42/AckAck/master/ackack.py) and store it in your project root or in a subfolder (e.g. Scripts).
@@ -23,7 +25,7 @@ Settings.bundle
 ├── Root.plist
 ├── Acknowledgements.plist
 ├── Licenses
-│   ├── CocoaAsyncSocket.plist
+│   ├── Charts.plist
 │   ├── HTTPParserC.plist
 │   ├── Telegraph.plist
 ```
