@@ -8,7 +8,7 @@ import plistlib
 import re
 import sys
 
-VERSION = '1.1'
+VERSION = '2.0'
 
 
 def main():
@@ -44,7 +44,7 @@ def main():
         elif option in ("-q", "--quiet"):
             quiet = True
         elif option in ("-v", "--version"):
-            print 'Ack Ack ' + VERSION
+            print 'AckAck ' + VERSION
             sys.exit()
         elif option in ("-i", "--input"):
             input_folder = arg
@@ -72,8 +72,12 @@ def main():
 def find_input_folder(quiet):
     """Finds the input folder based on the location of the Carthage folder."""
 
-    # Find the Carthage folder
+    # Find the Carthage Checkouts folder
     input_folder = find_folder(os.getcwd(), 'Carthage/Checkouts')
+
+    # Otherwise look for the CocoaPods Pods folder
+    if input_folder is None:
+        input_folder = find_folder(os.getcwd(), 'Pods')
 
     # Still no input folder?
     if input_folder is None:
@@ -111,14 +115,17 @@ def show_help():
     """Shows the help information."""
 
     print 'OVERVIEW:'
-    print '  Ack Ack ' + VERSION + ' - Acknowledgements Plist Generator'
+    print '  AckAck ' + VERSION + ' - Acknowledgements Plist Generator'
+    print ''
+    print '  Generates a Settings.plist for iOS based on your Carthage or CocoaPods frameworks.'
+    print '  Visit https://github.com/Building42/AckAck for more information.'
     print ''
     print 'USAGE:'
     print ' ./ackack.py [options]'
     print ''
     print 'OPTIONS:'
-    print '  -i or --input        manually provide the path to the Checkouts folder  e.g. Carthage/Checkouts'
-    print '  -o or --output       manually provide the path to the Settings bundle  e.g. MyProject/Settings.bundle'
+    print '  -i or --input        manually provide the path to the input folder, e.g. Carthage/Checkouts'
+    print '  -o or --output       manually provide the path to the output folder, e.g. MyProject/Settings.bundle'
     print '  -d or --depth        specify the maximum folder depth to look for licenses'
     print '  -n or --no-clean     do not remove existing license plists'
     print ''
@@ -126,7 +133,7 @@ def show_help():
     print '  -q or --quiet        do not generate any output unless there are errors'
     print '  -v or --version      dispays the version information'
     print ''
-    print 'If you run without any options, it will try to find the Checkouts and Settings bundle folder for you.'
+    print 'If you run without any options, it will try to find the folders for you.'
     print 'This usually works fine if the script is in the project root or in a Scripts subfolder.'
 
 
@@ -147,9 +154,14 @@ def find_folder(base_path, search):
                 if os.path.isdir(result):
                     return result
 
-    # Try parent folder if it contains a Cartfile
     parent_path = os.path.abspath(os.path.join(base_path, '..'))
+
+    # Try parent folder if it contains a Cartfile
     if os.path.exists(os.path.join(parent_path, 'Cartfile')):
+        return find_folder(parent_path, search)
+
+    # Try parent folder if it contains a Podfile
+    if os.path.exists(os.path.join(parent_path, 'Podfile')):
         return find_folder(parent_path, search)
 
     return None
