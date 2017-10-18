@@ -244,7 +244,7 @@ def create_acknowledgements_plist(frameworks, plist_path):
     licenses = []
 
     # Walk through the frameworks
-    for framework in frameworks:
+    for framework in sorted(frameworks):
         licenses.append({
             'Type': 'PSChildPaneSpecifier',
             'File': 'Licenses/' + framework, 'Title': framework
