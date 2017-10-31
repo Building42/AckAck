@@ -194,7 +194,8 @@ def generate(input_folder, output_folder, max_depth, clean_up, quiet):
                 continue
 
             # Look for license files
-            if file_name.endswith('LICENSE') or file_name.endswith('LICENSE.txt') or file_name.endswith('LICENSE.md'):
+            l_filename = file_name.lower()
+            if l_filename.endswith('license') or l_filename.endswith('license.txt') or l_filename.endswith('license.md'):
                 license_path = os.path.join(root, file_name)
 
                 # We found a license
