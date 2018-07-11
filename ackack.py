@@ -8,7 +8,7 @@ import plistlib
 import re
 import sys
 
-VERSION = '2.0'
+VERSION = '2.1'
 
 
 def main():
@@ -188,7 +188,7 @@ def generate(input_folder, output_folder, max_depth, clean_up, quiet):
 
     for root, _, files in os.walk(input_folder):
         for file_name in files:
-            # Igore licenses in deep folders
+            # Ignore licenses in deep folders
             relative_path = os.path.relpath(root, input_folder)
             if relative_path.count(os.path.sep) >= max_depth:
                 continue
