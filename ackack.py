@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 """AckAck acknowledgements generator."""
 
-import getopt
 import codecs
+import getopt
 import os
 import plistlib
 import re
@@ -24,8 +24,8 @@ def main():
         )
 
     except getopt.GetoptError as err:
-        print str(err)
-        print ''
+        print(str(err))
+        print('')
         show_help()
         sys.exit(2)
 
@@ -44,7 +44,7 @@ def main():
         elif option in ("-q", "--quiet"):
             quiet = True
         elif option in ("-v", "--version"):
-            print 'AckAck ' + VERSION
+            print('AckAck ' + VERSION)
             sys.exit()
         elif option in ("-i", "--input"):
             input_folder = arg
@@ -81,13 +81,14 @@ def find_input_folder(quiet):
 
     # Still no input folder?
     if input_folder is None:
-        print 'Input folder could not be detected, please specify it with -i or --input'
+        print('Input folder could not be detected, please specify it with -i or --input')
         sys.exit(2)
     elif not os.path.isdir(input_folder):
-        print 'Input folder ' + input_folder + " doesn't exist or is not a folder"
+        print('Input folder ' + input_folder +
+              " doesn't exist or is not a folder")
         sys.exit(2)
     elif not quiet:
-        print 'Input folder: ' + str(input_folder)
+        print('Input folder: ' + str(input_folder))
 
     return input_folder
 
@@ -100,13 +101,14 @@ def find_output_folder(quiet):
 
     # Still no output folder?
     if output_folder is None:
-        print 'Output folder could not be detected, please specify it with -o or --output'
+        print('Output folder could not be detected, please specify it with -o or --output')
         sys.exit(2)
     elif not os.path.isdir(output_folder):
-        print 'Output folder ' + output_folder + "doesn't exist or is not a folder"
+        print('Output folder ' + output_folder +
+              "doesn't exist or is not a folder")
         sys.exit(2)
     elif not quiet:
-        print 'Output folder: ' + str(output_folder)
+        print('Output folder: ' + str(output_folder))
 
     return output_folder
 
@@ -114,27 +116,27 @@ def find_output_folder(quiet):
 def show_help():
     """Shows the help information."""
 
-    print 'OVERVIEW:'
-    print '  AckAck ' + VERSION + ' - Acknowledgements Plist Generator'
-    print ''
-    print '  Generates a Settings.plist for iOS based on your Carthage or CocoaPods frameworks.'
-    print '  Visit https://github.com/Building42/AckAck for more information.'
-    print ''
-    print 'USAGE:'
-    print ' ./ackack.py [options]'
-    print ''
-    print 'OPTIONS:'
-    print '  -i or --input        manually provide the path to the input folder, e.g. Carthage/Checkouts'
-    print '  -o or --output       manually provide the path to the output folder, e.g. MyProject/Settings.bundle'
-    print '  -d or --depth        specify the maximum folder depth to look for licenses'
-    print '  -n or --no-clean     do not remove existing license plists'
-    print ''
-    print '  -h or --help         displays the help information'
-    print '  -q or --quiet        do not generate any output unless there are errors'
-    print '  -v or --version      dispays the version information'
-    print ''
-    print 'If you run without any options, it will try to find the folders for you.'
-    print 'This usually works fine if the script is in the project root or in a Scripts subfolder.'
+    print('OVERVIEW:')
+    print('  AckAck ' + VERSION + ' - Acknowledgements Plist Generator')
+    print('')
+    print('  Generates a Settings.plist for iOS based on your Carthage or CocoaPods frameworks.')
+    print('  Visit https://github.com/Building42/AckAck for more information.')
+    print('')
+    print('USAGE:')
+    print(' ./ackack.py [options]')
+    print('')
+    print('OPTIONS:')
+    print('  -i or --input        manually provide the path to the input folder, e.g. Carthage/Checkouts')
+    print('  -o or --output       manually provide the path to the output folder, e.g. MyProject/Settings.bundle')
+    print('  -d or --depth        specify the maximum folder depth to look for licenses')
+    print('  -n or --no-clean     do not remove existing license plists')
+    print('')
+    print('  -h or --help         displays the help information')
+    print('  -q or --quiet        do not generate any output unless there are errors')
+    print('  -v or --version      dispays the version information')
+    print('')
+    print('If you run without any options, it will try to find the folders for you.')
+    print('This usually works fine if the script is in the project root or in a Scripts subfolder.')
 
 
 def find_folder(base_path, search):
@@ -175,16 +177,16 @@ def generate(input_folder, output_folder, max_depth, clean_up, quiet):
     plists_path = os.path.join(output_folder, 'Licenses')
     if not os.path.exists(plists_path):
         if not quiet:
-            print 'Creating Licenses folder'
+            print('Creating Licenses folder')
         os.makedirs(plists_path)
     elif clean_up:
         if not quiet:
-            print 'Removing old license plists'
+            print('Removing old license plists')
         remove_files(plists_path, ".plist", quiet)
 
     # Scan the input folder for licenses
     if not quiet:
-        print 'Searching licenses...'
+        print('Searching licenses...')
 
     for root, _, files in os.walk(input_folder):
         for file_name in files:
@@ -202,7 +204,7 @@ def generate(input_folder, output_folder, max_depth, clean_up, quiet):
                 framework = os.path.basename(os.path.dirname(license_path))
                 frameworks.append(framework)
                 if not quiet:
-                    print 'Creating license plist for ' + framework
+                    print('Creating license plist for ' + framework)
 
                 # Generate a plist
                 plist_path = os.path.join(plists_path, framework + '.plist')
@@ -210,11 +212,11 @@ def generate(input_folder, output_folder, max_depth, clean_up, quiet):
 
     # Did we find any licenses?
     if not quiet and not frameworks:
-        print 'No licenses found'
+        print('No licenses found')
 
     # Create the acknowledgements plist
     if not quiet:
-        print 'Creating acknowledgements plist'
+        print('Creating acknowledgements plist')
 
     plist_path = os.path.join(output_folder, 'Acknowledgements.plist')
     create_acknowledgements_plist(frameworks, plist_path)
@@ -232,7 +234,7 @@ def create_license_plist(license_path, plist_path):
     )
 
     # Create the plist
-    plistlib.writePlist({
+    create_plist({
         'PreferenceSpecifiers': [{
             'Type': 'PSGroupSpecifier',
             'FooterText': license_text
@@ -252,10 +254,24 @@ def create_acknowledgements_plist(frameworks, plist_path):
         })
 
     # Create the plist
-    plistlib.writePlist(
+    create_plist(
         {'PreferenceSpecifiers': licenses},
         plist_path
     )
+
+
+def create_plist(content, path):
+    """Creates a plist with the provided content at the specified path."""
+    if method_available(plistlib, 'dump'):
+        with open(path, 'wb') as handle:
+            plistlib.dump(content, handle)
+    else:
+        plistlib.writePlist(content, path)
+
+
+def method_available(klass, method):
+    """Checks if the provided class supports and can call the provided method."""
+    return callable(getattr(klass, method, None))
 
 
 def remove_files(folder, extension, quiet):
@@ -269,7 +285,7 @@ def remove_files(folder, extension, quiet):
                     os.remove(full_path)
                 except OSError:
                     if not quiet:
-                        print 'Could not remove ' + full_path
+                        print('Could not remove ' + full_path)
 
 
 # Main entry point
