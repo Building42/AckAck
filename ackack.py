@@ -8,7 +8,7 @@ import plistlib
 import re
 import sys
 
-VERSION = '2.1'
+VERSION = '3.0'
 
 
 def main():
