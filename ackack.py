@@ -266,7 +266,7 @@ def create_plist(content, path):
         with open(path, 'wb') as handle:
             plistlib.dump(content, handle)
     else:
-        plistlib.writePlist(content, path)
+        plistlib.writePlist(content, path)  # pylint: disable=deprecated-method
 
 
 def method_available(klass, method):
