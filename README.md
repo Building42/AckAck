@@ -24,7 +24,7 @@ $ chmod +x ackack.py
 Settings.bundle
 ├── Root.plist
 ├── Acknowledgements.plist
-├── Licenses
+├── Acknowledgements
 │   ├── Charts.plist
 │   ├── HTTPParserC.plist
 │   ├── Telegraph.plist
