@@ -2,271 +2,19 @@
 """AckAck acknowledgements generator."""
 
 import codecs
-import getopt
+import logging
 import os
 import plistlib
 import re
 import sys
-
-VERSION = '3.0'
-
-
-def main():
-    """Main entry point of application."""
-
-    # Process input arguments
-    try:
-        opts, _ = getopt.getopt(
-            sys.argv[1:],
-            'hqvni:o:d:',
-            ['help', 'quiet', 'version', 'no-clean',
-             'input=', 'output=', 'max-depth=']
-        )
-
-    except getopt.GetoptError as err:
-        print(str(err))
-        print('')
-        show_help()
-        sys.exit(2)
-
-    # Arguments
-    input_folder = None
-    output_folder = None
-    max_depth = 1
-    clean_up = True
-    quiet = False
-
-    # Handle input arguments
-    for option, arg in opts:
-        if option in ("-h", "--help"):
-            show_help()
-            sys.exit()
-        elif option in ("-q", "--quiet"):
-            quiet = True
-        elif option in ("-v", "--version"):
-            print('AckAck ' + VERSION)
-            sys.exit()
-        elif option in ("-i", "--input"):
-            input_folder = arg
-        elif option in ("-o", "--output"):
-            output_folder = arg
-        elif option in ("-d", "--max-depth"):
-            max_depth = int(arg)
-        elif option in ("-n", "--no-clean"):
-            clean_up = False
-        else:
-            assert False, "unhandled option"
-
-    # No input folder? Find it
-    if input_folder is None:
-        input_folder = find_input_folder(quiet)
-
-    # No output folder? Find it
-    if output_folder is None:
-        output_folder = find_output_folder(quiet)
-
-    # Generate the acknowledgements
-    generate(input_folder, output_folder, max_depth, clean_up, quiet)
+from argparse import ArgumentParser
 
 
-def find_input_folder(quiet):
-    """Finds the input folder based on the location of the Carthage folder."""
-
-    # Find the Carthage Checkouts folder
-    input_folder = find_folder(os.getcwd(), 'Carthage/Checkouts')
-
-    # Otherwise look for the CocoaPods Pods folder
-    if input_folder is None:
-        input_folder = find_folder(os.getcwd(), 'Pods')
-
-    # Still no input folder?
-    if input_folder is None:
-        print('Input folder could not be detected, please specify it with -i or --input')
-        sys.exit(2)
-    elif not os.path.isdir(input_folder):
-        print('Input folder ' + input_folder +
-              " doesn't exist or is not a folder")
-        sys.exit(2)
-    elif not quiet:
-        print('Input folder: ' + str(input_folder))
-
-    return input_folder
+VERSION = '4.0-rc'
 
 
-def find_output_folder(quiet):
-    """Finds the output folder based on the location of the Settings.bundle."""
-
-    # Find the Settings.bundle
-    output_folder = find_folder(os.getcwd(), 'Settings.bundle')
-
-    # Still no output folder?
-    if output_folder is None:
-        print('Output folder could not be detected, please specify it with -o or --output')
-        sys.exit(2)
-    elif not os.path.isdir(output_folder):
-        print('Output folder ' + output_folder +
-              "doesn't exist or is not a folder")
-        sys.exit(2)
-    elif not quiet:
-        print('Output folder: ' + str(output_folder))
-
-    return output_folder
-
-
-def show_help():
-    """Shows the help information."""
-
-    print('OVERVIEW:')
-    print('  AckAck ' + VERSION + ' - Acknowledgements Plist Generator')
-    print('')
-    print('  Generates a Settings.plist for iOS based on your Carthage or CocoaPods frameworks.')
-    print('  Visit https://github.com/Building42/AckAck for more information.')
-    print('')
-    print('USAGE:')
-    print(' ./ackack.py [options]')
-    print('')
-    print('OPTIONS:')
-    print('  -i or --input        manually provide the path to the input folder, e.g. Carthage/Checkouts')
-    print('  -o or --output       manually provide the path to the output folder, e.g. MyProject/Settings.bundle')
-    print('  -d or --depth        specify the maximum folder depth to look for licenses')
-    print('  -n or --no-clean     do not remove existing license plists')
-    print('')
-    print('  -h or --help         displays the help information')
-    print('  -q or --quiet        do not generate any output unless there are errors')
-    print('  -v or --version      dispays the version information')
-    print('')
-    print('If you run without any options, it will try to find the folders for you.')
-    print('This usually works fine if the script is in the project root or in a Scripts subfolder.')
-
-
-def find_folder(base_path, search):
-    """Finds a folder recursively."""
-
-    # First look in the script's folder
-    if search.startswith(os.path.basename(base_path)) and os.path.isdir(base_path):
-        return base_path
-    if os.path.isdir(os.path.join(base_path, search)):
-        return os.path.join(base_path, search)
-
-    # Look in subfolders
-    for root, dirs, _ in os.walk(base_path):
-        for dir_name in dirs:
-            if search.startswith(dir_name):
-                result = os.path.join(root, search)
-                if os.path.isdir(result):
-                    return result
-
-    parent_path = os.path.abspath(os.path.join(base_path, '..'))
-
-    # Try parent folder if it contains a Cartfile
-    if os.path.exists(os.path.join(parent_path, 'Cartfile')):
-        return find_folder(parent_path, search)
-
-    # Try parent folder if it contains a Podfile
-    if os.path.exists(os.path.join(parent_path, 'Podfile')):
-        return find_folder(parent_path, search)
-
-    return None
-
-
-def generate(input_folder, output_folder, max_depth, clean_up, quiet):
-    """Generates the acknowledgements."""
-    frameworks = []
-
-    # Create license folder path
-    plists_path = os.path.join(output_folder, 'Licenses')
-    if not os.path.exists(plists_path):
-        if not quiet:
-            print('Creating Licenses folder')
-        os.makedirs(plists_path)
-    elif clean_up:
-        if not quiet:
-            print('Removing old license plists')
-        remove_files(plists_path, ".plist", quiet)
-
-    # Scan the input folder for licenses
-    if not quiet:
-        print('Searching licenses...')
-
-    for root, _, files in os.walk(input_folder):
-        for file_name in files:
-            # Ignore licenses in deep folders
-            relative_path = os.path.relpath(root, input_folder)
-            if relative_path.count(os.path.sep) >= max_depth:
-                continue
-
-            # Look for license files
-            l_filename = file_name.lower()
-            if l_filename.endswith('license') or l_filename.endswith('license.txt') or l_filename.endswith('license.md'):
-                license_path = os.path.join(root, file_name)
-
-                # We found a license
-                framework = os.path.basename(os.path.dirname(license_path))
-                frameworks.append(framework)
-                if not quiet:
-                    print('Creating license plist for ' + framework)
-
-                # Generate a plist
-                plist_path = os.path.join(plists_path, framework + '.plist')
-                create_license_plist(license_path, plist_path)
-
-    # Did we find any licenses?
-    if not quiet and not frameworks:
-        print('No licenses found')
-
-    # Create the acknowledgements plist
-    if not quiet:
-        print('Creating acknowledgements plist')
-
-    plist_path = os.path.join(output_folder, 'Acknowledgements.plist')
-    create_acknowledgements_plist(frameworks, plist_path)
-
-
-def create_license_plist(license_path, plist_path):
-    """Generates a plist for a single license, start with reading the license."""
-
-    # Read and clean up the text
-    license_text = codecs.open(license_path, 'r', 'utf-8').read()
-    license_text = license_text.replace('  ', ' ')
-    license_text = re.sub(
-        r'(\S)[ \t]*(?:\r\n|\n)[ \t]*(\S)', '\\1 \\2',
-        license_text
-    )
-
-    # Create the plist
-    create_plist({
-        'PreferenceSpecifiers': [{
-            'Type': 'PSGroupSpecifier',
-            'FooterText': license_text
-        }]
-    }, plist_path)
-
-
-def create_acknowledgements_plist(frameworks, plist_path):
-    """Generates a plist combining all the licenses."""
-    licenses = []
-
-    # Walk through the frameworks
-    for framework in sorted(frameworks):
-        licenses.append({
-            'Type': 'PSChildPaneSpecifier',
-            'File': 'Licenses/' + framework, 'Title': framework
-        })
-
-    # Create the plist
-    create_plist(
-        {'PreferenceSpecifiers': licenses},
-        plist_path
-    )
-
-
-def create_plist(content, path):
-    """Creates a plist with the provided content at the specified path."""
-    if method_available(plistlib, 'dump'):
-        with open(path, 'wb') as handle:
-            plistlib.dump(content, handle)
-    else:
-        plistlib.writePlist(content, path)  # pylint: disable=deprecated-method
+# Configure the logger
+logging.basicConfig(stream=sys.stdout, level=logging.INFO, format="%(message)s")
 
 
 def method_available(klass, method):
@@ -274,18 +22,306 @@ def method_available(klass, method):
     return callable(getattr(klass, method, None))
 
 
-def remove_files(folder, extension, quiet):
-    """Removes files with a specific extension from a folder."""
+class Generator:
+    """Generates the acknowledgements."""
 
-    for root, _, files in os.walk(folder):
-        for file_name in files:
-            if file_name.endswith(extension):
-                full_path = os.path.join(root, file_name)
-                try:
-                    os.remove(full_path)
-                except OSError:
-                    if not quiet:
-                        print('Could not remove ' + full_path)
+    def __init__(self, options):
+        self.options = options
+
+    def find_input_folders(self):
+        """Finds the input folders based on the location of the Carthage folder."""
+
+        # Find the Carthage Checkouts and CocoaPods Pods folder
+        carthage_folder = self.find_folder(os.getcwd(), 'Carthage/Checkouts')
+        cocoapods_folder = self.find_folder(os.getcwd(), 'Pods')
+
+        # If they are found, add them
+        input_folders = []
+        if carthage_folder:
+            input_folders.append(carthage_folder)
+        if cocoapods_folder:
+            input_folders.append(cocoapods_folder)
+
+        self.options.input_folders = input_folders
+
+    def find_output_folder(self):
+        """Finds the output folder based on the location of the Settings.bundle."""
+
+        # Find the Settings.bundle
+        self.options.output_folder = self.find_folder(os.getcwd(), 'Settings.bundle')
+
+    def find_folder(self, base_path, search):
+        """Finds a folder recursively."""
+
+        # First look in the script's folder
+        if search.startswith(os.path.basename(base_path)) and os.path.isdir(base_path):
+            return base_path
+        if os.path.isdir(os.path.join(base_path, search)):
+            return os.path.join(base_path, search)
+
+        # Look in subfolders
+        for root, dirs, _ in os.walk(base_path):
+            for dir_name in dirs:
+                if search.startswith(dir_name):
+                    result = os.path.join(root, search)
+                    if os.path.isdir(result):
+                        return result
+
+        parent_path = os.path.abspath(os.path.join(base_path, '..'))
+
+        # Try parent folder if it contains a Cartfile
+        if os.path.exists(os.path.join(parent_path, 'Cartfile')):
+            return self.find_folder(parent_path, search)
+
+        # Try parent folder if it contains a Podfile
+        if os.path.exists(os.path.join(parent_path, 'Podfile')):
+            return self.find_folder(parent_path, search)
+
+        return None
+
+    def generate(self):
+        """Generates the acknowledgements."""
+        options = self.options
+
+        # Create the folder to store the licenses
+        container_path = os.path.join(
+            options.output_folder, options.container_name)
+        if not os.path.exists(container_path):
+            logging.info('Creating %s folder', options.container_name)
+            os.makedirs(container_path)
+        elif not options.no_clean:
+            logging.info('Removing old license plists')
+            self.remove_files(container_path, ".plist")
+
+        # Scan the input folder for licenses
+        logging.info('Searching licenses...')
+        frameworks = {}
+
+        for folder in options.input_folders:
+            for root, dirs, files in os.walk(folder):
+                # Sort the folder names for nicer output
+                dirs.sort()
+
+                for file_name in files:
+                    # Ignore licenses in deep folders
+                    relative_path = os.path.relpath(root, folder)
+                    if relative_path.count(os.path.sep) >= options.max_depth:
+                        continue
+
+                    # Look for license files
+                    if file_name.lower() in options.license_names:
+                        # We found a framework's license
+                        license_path = os.path.join(root, file_name)
+                        framework_name = os.path.basename(os.path.dirname(license_path))
+
+                        # Clean up the framework name and store the info
+                        framework_name = self.clean_framework_name(framework_name)
+                        frameworks[framework_name] = license_path
+
+        # Did we find any licenses?
+        if not frameworks:
+            logging.info('No licenses found')
+
+        # Create license plists
+        framework_names = sorted(frameworks.keys())
+        for framework_name in framework_names:
+            logging.info('Creating license plist for %s', framework_name)
+
+            # Generate a plist
+            license_path = frameworks[framework_name]
+            plist_path = os.path.join(container_path, framework_name + '.plist')
+            self.create_license_plist(license_path, plist_path)
+
+        # Create the acknowledgements plist
+        logging.info('Creating %s plist', options.plist_name)
+
+        plist_path = os.path.join(options.output_folder, options.plist_name + '.plist')
+        self.create_acknowledgements_plist(framework_names, options.container_name, plist_path)
+
+    def create_license_plist(self, license_path, plist_path):
+        """Generates a plist for a single license, start with reading the license."""
+
+        # Read and clean up the text
+        license_text = codecs.open(license_path, 'r', 'utf-8').read()
+        license_text = license_text.replace('  ', ' ')
+        license_text = re.sub(
+            r'(\S)[ \t]*(?:\r\n|\n)[ \t]*(\S)', '\\1 \\2',
+            license_text
+        )
+
+        # Remove control characters not allowed in plists
+        license_text = re.sub(r'[\x00-\x08\x0b\x0c\x0e\x0f\x10-\x19\x1a-\x1f]', '', license_text)
+
+        # Create the plist
+        self.create_plist({
+            'PreferenceSpecifiers': [{
+                'Type': 'PSGroupSpecifier',
+                'FooterText': license_text
+            }]
+        }, plist_path)
+
+    def create_acknowledgements_plist(self, frameworks, container_name, plist_path):
+        """Generates a plist combining all the licenses."""
+        contents = []
+
+        # Walk through the frameworks
+        for framework in sorted(frameworks):
+            contents.append({
+                'Type': 'PSChildPaneSpecifier',
+                'File': container_name + '/' + framework, 'Title': framework
+            })
+
+        # Create the plist
+        self.create_plist(
+            {'PreferenceSpecifiers': contents},
+            plist_path
+        )
+
+    def create_plist(self, content, path):
+        """Creates a plist with the provided content at the specified path."""
+        if method_available(plistlib, 'dump'):
+            with open(path, 'wb') as handle:
+                plistlib.dump(content, handle)
+        else:
+            plistlib.writePlist(content, path) # pylint: disable=deprecated-method
+
+    def clean_framework_name(self, name):
+        """Cleans up the framework name."""
+        return name[:1].upper() + name[1:]
+
+    def remove_files(self, folder, extension):
+        """Removes files with a specific extension from a folder."""
+
+        for root, _, files in os.walk(folder):
+            for file_name in sorted(files):
+                if file_name.endswith(extension):
+                    full_path = os.path.join(root, file_name)
+                    try:
+                        os.remove(full_path)
+                    except OSError:
+                        logging.info('Could not remove %s', full_path)
+
+
+def main():
+    """Main entry point of application."""
+
+    # Create a parser to parse the commandline arguments
+    parser = ArgumentParser(
+        prog='AckAck',
+        description='Generates an acknowledgements plist from your Carthage / CocoaPods frameworks.',
+        epilog='The script will try to find the input and output folders for you. '
+        'This usually works fine if the script is in the project root or in a Scripts subfolder. '
+        'Visit https://github.com/Building42/AckAck for more information.',
+        add_help=False
+    )
+
+    parser.add_argument(
+        '-i', '--input', dest='input_folders', nargs='*',
+        help='the path to the input folder(s), e.g. Carthage/Checkouts'
+    )
+
+    parser.add_argument(
+        '-o', '--output', dest='output_folder',
+        help='the path to the output folder, e.g. MyProject/Settings.bundle'
+    )
+
+    parser.add_argument(
+        '-p', '--plist-name', default='Acknowledgements',
+        help="the name of the plist that points to the licenses (default: 'Acknowledgements')"
+    )
+
+    parser.add_argument(
+        '-c', '--container-name',
+        help="the name of the folder that will contain the licenses (default: 'Acknowledgements' or 'Licenses')"
+    )
+
+    parser.add_argument(
+        '-l', '--license-names', nargs='*', default=['license', 'license.txt', 'license.md'],
+        help="the case-insensitive license file names to look for (default: 'license', 'license.txt', 'license.md')"
+    )
+
+    parser.add_argument(
+        '-d', '--max-depth', default=1, type=int,
+        help='specify the maximum folder depth to look for licenses'
+    )
+
+    parser.add_argument(
+        '-n', '--no-clean', action='store_true',
+        help='do not remove existing license plists'
+    )
+
+    parser.add_argument(
+        '-q', '--quiet', action='store_true',
+        help='do not generate any output unless there are errors'
+    )
+
+    parser.add_argument(
+        '-h', '--help', action='help',
+        help='show this help message and exit'
+    )
+
+    parser.add_argument(
+        '-v', '--version', action='version', version='%(prog)s ' + VERSION,
+        help='show the version information and exit'
+    )
+
+    # Create the generator based on the commandline arguments
+    options = parser.parse_args()
+    generator = Generator(options)
+
+    # Quiet mode?
+    if generator.options.quiet:
+        logging.getLogger().setLevel(logging.WARNING)
+
+    # No input folder? Find it
+    if not generator.options.input_folders:
+        generator.find_input_folders()
+
+    # Still no input folder?
+    if not generator.options.input_folders:
+        logging.error('Input folder(s) could not be detected, please specify one with -i or --input')
+        sys.exit(2)
+    else:
+        # Are the input folders valid?
+        for folder in generator.options.input_folders:
+            if not os.path.isdir(folder):
+                logging.error("Input folder %s doesn't exist or is not a folder", folder)
+                sys.exit(2)
+
+    # Log input folder(s)
+    logging.info('Input folder(s): %s', ', '.join(generator.options.input_folders))
+
+    # No output folder? Find it
+    if not generator.options.output_folder:
+        generator.find_output_folder()
+
+    # Still no output folder?
+    if not generator.options.output_folder:
+        logging.error('Output folder could not be detected, please specify one with -o or --output')
+        sys.exit(2)
+    elif not os.path.isdir(generator.options.output_folder):
+        logging.error("Output folder %s doesn't exist or is not a folder", generator.options.output_folder)
+        sys.exit(2)
+
+    # Log output folder
+    logging.info('Output folder: %s', str(generator.options.output_folder))
+
+    # Make sure the plist name is only a name without extension
+    if not re.match('^[A-Za-z0-9_-]+$', generator.options.plist_name):
+        logging.error('Plist name invalid, it should not contain any path components')
+        sys.exit(2)
+
+    # No container name?
+    if not generator.options.container_name:
+        # In older versions the folder would be named Licenses
+        old_folder = os.path.join(generator.options.output_folder, 'Licenses')
+        generator.options.container_name = 'Licenses' if os.path.isdir(old_folder) else 'Acknowledgements'
+
+    # Make sure the license file names to match against are lowercased
+    generator.options.license_names = list(map(str.lower, generator.options.license_names))
+
+    # Generate the acknowledgements
+    generator.generate()
 
 
 # Main entry point
