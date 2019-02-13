@@ -10,7 +10,7 @@ import sys
 from argparse import ArgumentParser
 
 
-VERSION = '4.0-rc'
+VERSION = '4.0'
 
 
 # Configure the logger
