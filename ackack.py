@@ -10,7 +10,7 @@ import sys
 from argparse import ArgumentParser
 
 
-VERSION = '4.0'
+VERSION = '4.1-rc'
 
 
 # Configure the logger
@@ -122,20 +122,38 @@ class Generator:
         if not frameworks:
             logging.info('No licenses found')
 
-        # Create license plists
-        framework_names = sorted(frameworks.keys())
-        for framework_name in framework_names:
-            logging.info('Creating license plist for %s', framework_name)
+        # Find existing license plists
+        old_framework_names = self.find_framework_plists(container_path)
+        new_framework_names = list(frameworks.keys())
+        all_framework_names = set(old_framework_names + new_framework_names)
 
-            # Generate a plist
+        # Process license plists
+        framework_names = sorted(list(all_framework_names))
+        for framework_name in framework_names:
+            # If the framework isn't based on a license just mention it
+            if framework_name not in new_framework_names:
+                logging.info('Tracking license plist for %s', framework_name)
+                continue
+
+            # Generate the paths
             license_path = frameworks[framework_name]
             plist_path = os.path.join(container_path, framework_name + '.plist')
+
+            # Create or update the plist
+            if os.path.exists(plist_path):
+                logging.info('Updating license plist for %s', framework_name)
+            else:
+                logging.info('Creating license plist for %s', framework_name)
+
             self.create_license_plist(license_path, plist_path)
 
-        # Create the acknowledgements plist
-        logging.info('Creating %s plist', options.plist_name)
-
+        # Create or update the acknowledgements plist
         plist_path = os.path.join(options.output_folder, options.plist_name + '.plist')
+        if os.path.exists(plist_path):
+            logging.info('Updating acknowledgements plist')
+        else:
+            logging.info('Creating acknowledgements plist')
+
         self.create_acknowledgements_plist(framework_names, options.container_name, plist_path)
 
     def create_license_plist(self, license_path, plist_path):
@@ -159,6 +177,19 @@ class Generator:
                 'FooterText': license_text
             }]
         }, plist_path)
+
+    def find_framework_plists(self, folder):
+        """Finds frameworks names based on the plists in the specified folder."""
+        frameworks = []
+
+        for _, _, files in os.walk(folder):
+            for file in files:
+                if file.endswith(".plist"):
+                    framework_name = os.path.splitext(file)[0]
+                    framework_name = self.clean_framework_name(framework_name)
+                    frameworks.append(framework_name)
+
+        return sorted(frameworks)
 
     def create_acknowledgements_plist(self, frameworks, container_name, plist_path):
         """Generates a plist combining all the licenses."""
