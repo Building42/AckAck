@@ -5,7 +5,7 @@ AckAck is a python script that automatically generates a plist based on the lice
 
 ## Installation
 
-Simply download the [ackack.py script](https://raw.githubusercontent.com/Building42/AckAck/master/ackack.py) and store it in your project root or in a subfolder (e.g. Scripts).
+Simply download the [ackack.py script](https://raw.githubusercontent.com/Building42/AckAck/main/ackack.py) and store it in your project root or in a subfolder (e.g. Scripts).
 
 ```sh
 $ wget https://raw.githubusercontent.com/Building42/AckAck/master/ackack.py
