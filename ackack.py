@@ -10,7 +10,7 @@ import sys
 from argparse import ArgumentParser
 
 
-VERSION = '4.1'
+VERSION = '4.2'
 
 
 # Configure the logger
@@ -41,7 +41,9 @@ class Generator:
             input_folders.append(carthage_folder)
         if cocoapods_folder:
             input_folders.append(cocoapods_folder)
-
+        if self.options.spm_folder:
+            input_folders.append(self.options.spm_folder)
+        
         self.options.input_folders = input_folders
 
     def find_output_folder(self):
@@ -249,6 +251,11 @@ def main():
     parser.add_argument(
         '-i', '--input', dest='input_folders', nargs='*',
         help='the path to the input folder(s), e.g. Carthage/Checkouts'
+    )
+
+    parser.add_argument(
+        '-s', '--spminput', dest='spm_folder',
+        help="the path to the app's derived data folder pointing to source packages and checkouts, eg. ${DERIVED_DATA_CANDIDATE}/SourcePackages/checkouts/"
     )
 
     parser.add_argument(

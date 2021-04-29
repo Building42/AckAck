@@ -1,5 +1,5 @@
 # AckAck
-AckAck is a python script that automatically generates a plist based on the licenses in your Carthage or CocoaPods folder. When you use the plists in your app, the licenses will show up in the Settings app.
+AckAck is a python script that automatically generates a plist based on the licenses in your Carthage, CocoaPods, or SwiftPackageManager folder. When you use the plists in your app, the licenses will show up in the Settings app.
 
 ![Settings example](http://i.imgur.com/V4JfPlC.png)
 
@@ -45,3 +45,26 @@ You can see the options and other help information by running `./ackack.py --hel
 cd $SRCROOT
 ./ackack.py
 ```
+
+### Using with Swift Package Manager
+Things get a little trickier when using SPM because of how Xcode stores the packages. If you plan to integrate with Xcode, set your Run Script Build Phase like so:
+
+```sh
+DERIVED_DATA_CANDIDATE="${BUILD_ROOT}"
+while ! [ -d "${DERIVED_DATA_CANDIDATE}/SourcePackages/checkouts" ]; do
+  if [ "${DERIVED_DATA_CANDIDATE}" = / ]; then
+    echo >&2 "error: Unable to locate SourcePackages directory from BUILD_ROOT: '${BUILD_ROOT}'"
+    exit 1
+  fi
+
+  DERIVED_DATA_CANDIDATE="$(dirname "${DERIVED_DATA_CANDIDATE}")"
+done
+
+
+cd $SRCROOT
+./ackack.py --spminput ${DERIVED_DATA_CANDIDATE}
+```
+
+Otherwise, you'll need to specify the `--spminput` argument when running AckAck. SPM contents (unless you've specified otherwise) are located in your app's derived data folder under `/SourcePackages/checkouts`. The path to that folder usually looks something like this:
+
+    /Users/username/Library/Developer/Xcode/DerivedData/AppName-buildUUID/SourcePackages/checkouts
